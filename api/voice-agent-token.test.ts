@@ -12,9 +12,18 @@ type MockResponse = {
 
 const response = (): MockResponse => {
   const result = { headers: {} } as MockResponse;
-  result.status = (code) => { result.statusCode = code; return result; };
-  result.json = (body) => { result.body = body; return result; };
-  result.setHeader = (name, value) => { result.headers[name] = value; return result; };
+  result.status = code => {
+    result.statusCode = code;
+    return result;
+  };
+  result.json = body => {
+    result.body = body;
+    return result;
+  };
+  result.setHeader = (name, value) => {
+    result.headers[name] = value;
+    return result;
+  };
   return result;
 };
 
@@ -29,13 +38,27 @@ describe("Vercel voice-agent token route", () => {
   });
 
   it("returns only the temporary token payload", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ token: "temporary-token", expires_in_seconds: 300 }), { status: 200 }),
-    ));
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              token: "temporary-token",
+              expires_in_seconds: 300,
+            }),
+            { status: 200 }
+          )
+        )
+    );
     const res = response();
     await handler({ method: "GET" }, res);
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ token: "temporary-token", expiresInSeconds: 300 });
+    expect(res.body).toEqual({
+      token: "temporary-token",
+      expiresInSeconds: 300,
+    });
     expect(res.body).not.toHaveProperty("apiKey");
   });
 });

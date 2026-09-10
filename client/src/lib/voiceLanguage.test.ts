@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getVoiceCopy, type VoiceLanguage, localizePriority } from "./voiceLanguage";
+import {
+  getVoiceCopy,
+  type VoiceLanguage,
+  localizePriority,
+} from "./voiceLanguage";
 
 describe("voice language copy", () => {
   it("returns Azerbaijani copy by default", () => {

@@ -5,7 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
+  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -26,15 +26,20 @@ export const appRouter = router({
 
       const response = await fetch(
         "https://agents.assemblyai.com/v1/token?expires_in_seconds=300&max_session_duration_seconds=900",
-        { headers: { Authorization: `Bearer ${ENV.assemblyAiApiKey}` } },
+        { headers: { Authorization: `Bearer ${ENV.assemblyAiApiKey}` } }
       );
 
       if (!response.ok) {
         const detail = await response.text();
-        throw new Error(`AssemblyAI token request failed (${response.status}): ${detail}`);
+        throw new Error(
+          `AssemblyAI token request failed (${response.status}): ${detail}`
+        );
       }
 
-      const payload = (await response.json()) as { token?: string; expires_in_seconds?: number };
+      const payload = (await response.json()) as {
+        token?: string;
+        expires_in_seconds?: number;
+      };
       if (!payload.token) {
         throw new Error("AssemblyAI returned no temporary token");
       }

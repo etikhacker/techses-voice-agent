@@ -21,17 +21,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const response = await fetch(
     "https://agents.assemblyai.com/v1/token?expires_in_seconds=300&max_session_duration_seconds=900",
-    { headers: { Authorization: `Bearer ${apiKey}` } },
+    { headers: { Authorization: `Bearer ${apiKey}` } }
   );
 
   if (!response.ok) {
     const detail = await response.text();
-    return res.status(response.status).json({ error: "AssemblyAI token request failed", detail });
+    return res
+      .status(response.status)
+      .json({ error: "AssemblyAI token request failed", detail });
   }
 
-  const payload = (await response.json()) as { token?: string; expires_in_seconds?: number };
+  const payload = (await response.json()) as {
+    token?: string;
+    expires_in_seconds?: number;
+  };
   if (!payload.token) {
-    return res.status(502).json({ error: "AssemblyAI returned no temporary token" });
+    return res
+      .status(502)
+      .json({ error: "AssemblyAI returned no temporary token" });
   }
 
   return res.status(200).json({
