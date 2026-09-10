@@ -188,9 +188,8 @@ The current MVP is intentionally focused. It does not yet persist user accounts,
 This project is provided for hackathon and educational use. Add a formal open-source license before distributing it as a reusable library or commercial product.
 
 ## References
-
-[1]: https://www.assemblyai.com/docs/voice-agents "AssemblyAI Voice Agents documentation"
-[2]: https://www.assemblyai.com/docs/api-reference/voice-agent-api/generate-voice-agent-token "AssemblyAI Voice Agent token API"
-[3]: https://vercel.com/docs/functions "Vercel Functions documentation"
-[4]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API "MDN Web Audio API documentation"
-[5]: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia "MDN getUserMedia documentation"
+- [AssemblyAI Voice Agents documentation](https://www.assemblyai.com/docs/voice-agents)
+- [AssemblyAI Voice Agent token API](https://www.assemblyai.com/docs/api-reference/voice-agent-api/generate-voice-agent-token)
+- [Vercel Functions documentation](https://vercel.com/docs/functions)
+- [MDN Web Audio API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+- [MDN getUserMedia documentation](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia)
