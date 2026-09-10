@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   ArrowUpRight,
@@ -32,6 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getIssue, issues, type Issue, type IssueId } from "@/lib/issueData";
+import { trpc } from "@/lib/trpc";
 
 type SessionState = "ready" | "listening" | "thinking" | "responded";
 type ChatItem = { role: "user" | "assistant"; text: string; time: string };
@@ -39,6 +40,23 @@ type ChatItem = { role: "user" | "assistant"; text: string; time: string };
 const iconForIssue = (id: IssueId) => ({ wifi: Wifi, printer: Printer, windows: SquareTerminal, account: ShieldCheck })[id];
 
 const timeNow = () => new Intl.DateTimeFormat("az-AZ", { hour: "2-digit", minute: "2-digit" }).format(new Date());
+
+const pcmBase64 = (samples: Float32Array) => {
+  const buffer = new ArrayBuffer(samples.length * 2);
+  const view = new DataView(buffer);
+  samples.forEach((sample, index) => view.setInt16(index * 2, Math.max(-1, Math.min(1, sample)) * 0x7fff, true));
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
+  return btoa(binary);
+};
+
+const audioFromBase64 = (encoded: string) => {
+  const binary = atob(encoded);
+  const samples = new Int16Array(binary.length / 2);
+  for (let index = 0; index < samples.length; index += 1) samples[index] = (binary.charCodeAt(index * 2) | (binary.charCodeAt(index * 2 + 1) << 8));
+  return samples;
+};
 
 export default function Home() {
   const [sessionState, setSessionState] = useState<SessionState>("ready");
@@ -48,11 +66,66 @@ export default function Home() {
   ]);
   const [ticketCreated, setTicketCreated] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [connectionMode, setConnectionMode] = useState<"demo" | "live">("demo");
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const createVoiceToken = trpc.voiceAgent.createToken.useQuery(undefined, { enabled: false });
+  const socketRef = useRef<WebSocket | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const playbackContextRef = useRef<AudioContext | null>(null);
+  const nextPlaybackTimeRef = useRef(0);
+  const sessionReadyRef = useRef(false);
 
   const activeIssue = useMemo(() => getIssue(activeIssueId), [activeIssueId]);
 
+  const stopLiveAudio = () => {
+    sessionReadyRef.current = false;
+    processorRef.current?.disconnect();
+    sourceRef.current?.disconnect();
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    audioContextRef.current?.close();
+    playbackContextRef.current?.close();
+    processorRef.current = null;
+    sourceRef.current = null;
+    mediaStreamRef.current = null;
+    audioContextRef.current = null;
+    playbackContextRef.current = null;
+  };
+
+  const playAgentAudio = (encoded: string) => {
+    const samples = audioFromBase64(encoded);
+    const context = playbackContextRef.current ?? new AudioContext({ sampleRate: 24000 });
+    playbackContextRef.current = context;
+    const buffer = context.createBuffer(1, samples.length, 24000);
+    const channel = buffer.getChannelData(0);
+    samples.forEach((sample, index) => { channel[index] = sample / 0x7fff; });
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    const startAt = Math.max(context.currentTime, nextPlaybackTimeRef.current);
+    source.start(startAt);
+    nextPlaybackTimeRef.current = startAt + buffer.duration;
+  };
+
+  const startMicrophone = (stream: MediaStream, socket: WebSocket) => {
+    const context = new AudioContext({ sampleRate: 24000 });
+    const source = context.createMediaStreamSource(stream);
+    const processor = context.createScriptProcessor(4096, 1, 1);
+    processor.onaudioprocess = (event) => {
+      if (!sessionReadyRef.current || socket.readyState !== WebSocket.OPEN) return;
+      socket.send(JSON.stringify({ type: "input.audio", audio: pcmBase64(event.inputBuffer.getChannelData(0)) }));
+    };
+    source.connect(processor);
+    processor.connect(context.destination);
+    audioContextRef.current = context;
+    sourceRef.current = source;
+    processorRef.current = processor;
+  };
+
   useEffect(() => {
-    if (sessionState !== "thinking") return;
+    if (sessionState !== "thinking" || connectionMode !== "demo") return;
     const timeout = window.setTimeout(() => {
       setChat((current) => [...current, { role: "assistant", text: activeIssue.response, time: timeNow() }]);
       setSessionState("responded");
@@ -60,10 +133,86 @@ export default function Home() {
     return () => window.clearTimeout(timeout);
   }, [activeIssue, sessionState]);
 
-  const startListening = () => {
+  const startListening = async () => {
     setTicketCreated(false);
+    setLiveError(null);
     setSessionState("listening");
-    window.setTimeout(() => setSessionState("thinking"), 1200);
+
+    try {
+      const tokenResult = await createVoiceToken.refetch();
+      const token = tokenResult.data?.token;
+      if (!token) throw new Error("Temporary AssemblyAI token alınmadı.");
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("Bu brauzer mikrofon girişini dəstəkləmir.");
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+      const socket = new WebSocket(`wss://agents.assemblyai.com/v1/ws?token=${encodeURIComponent(token)}`);
+      socketRef.current = socket;
+
+      socket.onopen = () => {
+        socket.send(JSON.stringify({
+          type: "session.update",
+          session: {
+            system_prompt: "Sən TechSəs adlı IT help desk səsli agentsən. İstifadəçi Azərbaycan və ya ingilis dilində danışa bilər; eyni dildə cavab ver. Qısa, praktik və təhlükəsiz troubleshooting addımları ver. Əmin olmadıqda bunu açıq de və ticket yaratmağı təklif et.",
+            greeting: "Salam, mən TechSəsəm. Kompüter problemini danış, birlikdə həll edək.",
+            input: { format: { encoding: "audio/pcm" }, keyterms: ["AssemblyAI", "TechSəs", "Wi-Fi", "Windows", "router"] },
+            output: { voice: "anna", format: { encoding: "audio/pcm" }, volume: 85 },
+          },
+        }));
+      };
+
+      socket.onmessage = (event) => {
+        const payload = JSON.parse(event.data as string) as { type?: string; text?: string; data?: string; error?: string };
+        if (payload.type === "session.ready") {
+          sessionReadyRef.current = true;
+          setConnectionMode("live");
+          startMicrophone(stream, socket);
+          return;
+        }
+        if (payload.type === "transcript.user" && payload.text) {
+          setChat((current) => [...current, { role: "user", text: payload.text as string, time: timeNow() }]);
+          setSessionState("thinking");
+        }
+        if (payload.type === "reply.audio" && payload.data) playAgentAudio(payload.data);
+        if (payload.type === "transcript.agent" && payload.text) {
+          setChat((current) => [...current, { role: "assistant", text: payload.text as string, time: timeNow() }]);
+          setSessionState("responded");
+        }
+        if (payload.type === "session.error" || payload.type === "error") {
+          setLiveError(payload.error ?? "AssemblyAI sessiya xətası.");
+          setSessionState("ready");
+          stopLiveAudio();
+        }
+      };
+
+      socket.onerror = () => {
+        setLiveError("AssemblyAI bağlantısı qurulmadı. Demo rejimi ilə davam edə bilərsən.");
+        setConnectionMode("demo");
+        setSessionState("ready");
+        stopLiveAudio();
+      };
+      socket.onclose = () => { sessionReadyRef.current = false; };
+    } catch (error) {
+      setLiveError(error instanceof Error ? error.message : "Mikrofon sessiyası başlatılmadı.");
+      setConnectionMode("demo");
+      setSessionState("ready");
+      stopLiveAudio();
+    }
+  };
+
+  const finishListening = () => {
+    if (connectionMode === "live") {
+      processorRef.current?.disconnect();
+      sourceRef.current?.disconnect();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      audioContextRef.current?.close();
+      processorRef.current = null;
+      sourceRef.current = null;
+      mediaStreamRef.current = null;
+      audioContextRef.current = null;
+      setSessionState("thinking");
+      return;
+    }
+    setSessionState("thinking");
   };
 
   const chooseIssue = (issue: Issue) => {
@@ -74,7 +223,11 @@ export default function Home() {
   };
 
   const resetSession = () => {
+    socketRef.current?.close();
+    stopLiveAudio();
     setSessionState("ready");
+    setConnectionMode("demo");
+    setLiveError(null);
     setTicketCreated(false);
     setChat([{ role: "assistant", text: "Yeni sessiya hazırdır. Problemini mənə danışa bilərsən.", time: timeNow() }]);
   };
@@ -130,9 +283,10 @@ export default function Home() {
               <div className="mb-5 flex items-end justify-between gap-4"><div><p className="eyebrow text-mint">Good morning, Omar</p><h1 className="mt-2 max-w-[680px] font-display text-3xl font-bold leading-[1.08] tracking-[-0.04em] text-paper sm:text-5xl">Make IT issues<br /><span className="text-white/45">feel less technical.</span></h1></div><button onClick={resetSession} className="hidden items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-mute transition hover:border-white/25 hover:text-paper sm:flex"><RotateCcw className="h-3.5 w-3.5" /> Reset session</button></div>
               <div className="voice-card relative overflow-hidden rounded-[24px] border border-white/10 bg-[#171B1A] p-5 shadow-2xl shadow-black/20 sm:p-7">
                 <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-mint/10 blur-3xl" />
-                <div className="relative flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><span className={cn("live-pulse", sessionState !== "ready" && "active")} /><span className="eyebrow">{stateCopy.eyebrow}</span></div><h2 className="mt-4 font-display text-2xl font-bold tracking-[-0.03em] sm:text-3xl">{stateCopy.title}</h2><p className="mt-2 max-w-md text-sm leading-6 text-mute">{stateCopy.description}</p></div><div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-mute"><span className="text-mint">●</span> AssemblyAI-ready</div></div>
+                <div className="relative flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><span className={cn("live-pulse", sessionState !== "ready" && "active")} /><span className="eyebrow">{stateCopy.eyebrow}</span></div><h2 className="mt-4 font-display text-2xl font-bold tracking-[-0.03em] sm:text-3xl">{stateCopy.title}</h2><p className="mt-2 max-w-md text-sm leading-6 text-mute">{stateCopy.description}</p></div><div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-mute"><span className="text-mint">●</span> {connectionMode === "live" ? "AssemblyAI live" : "AssemblyAI-ready"}</div></div>
                 <div className="wave-wrap my-8" aria-label={sessionState === "listening" ? "Listening" : "Voice visualization"}>{Array.from({ length: 42 }).map((_, index) => <span key={index} className={cn("wave-bar", sessionState === "listening" && "wave-live", sessionState === "thinking" && "wave-thinking")} style={{ height: `${18 + ((index * 7) % 40)}px`, "--i": index } as React.CSSProperties } />)}</div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><Button onClick={sessionState === "listening" ? () => setSessionState("thinking") : startListening} className="h-12 rounded-xl bg-mint px-5 font-bold text-ink hover:bg-[#d8ff83]">{sessionState === "listening" ? <><Pause className="mr-2 h-4 w-4" /> Finish speaking</> : <><Mic className="mr-2 h-4 w-4" /> Start voice session</>}</Button><button className="flex h-12 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-semibold text-mute transition hover:border-white/20 hover:text-paper" aria-label="Use keyboard input"><span className="kbd">⌘</span><span className="kbd">K</span><span className="hidden sm:inline">Type instead</span></button></div><span className="text-xs text-mute">{sessionState === "ready" ? "Usually replies in under 2 sec" : "Session is simulated for this demo"}</span></div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><Button onClick={sessionState === "listening" ? finishListening : startListening} disabled={createVoiceToken.isFetching} className="h-12 rounded-xl bg-mint px-5 font-bold text-ink hover:bg-[#d8ff83]">{sessionState === "listening" ? <><Pause className="mr-2 h-4 w-4" /> Finish speaking</> : <><Mic className="mr-2 h-4 w-4" /> Start voice session</>}</Button><button className="flex h-12 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-semibold text-mute transition hover:border-white/20 hover:text-paper" aria-label="Use keyboard input"><span className="kbd">⌘</span><span className="kbd">K</span><span className="hidden sm:inline">Type instead</span></button></div><span className="text-xs text-mute">{sessionState === "ready" ? "Microphone + AssemblyAI live" : connectionMode === "live" ? "Live audio session" : "Demo fallback active"}</span></div>
+                {liveError && <p className="relative mt-4 rounded-lg border border-coral/25 bg-coral/10 px-3 py-2 text-xs leading-5 text-coral">{liveError} You can still use the issue shortcuts below.</p>}
               </div>
 
               <div className="mt-7 flex items-center justify-between"><div><p className="eyebrow">Quick start</p><h3 className="mt-1 font-display text-lg font-bold">What’s going on?</h3></div><button className="flex items-center gap-1 text-xs font-bold text-mute transition hover:text-mint">View all <ArrowUpRight className="h-3.5 w-3.5" /></button></div>
@@ -141,7 +295,7 @@ export default function Home() {
 
             <aside className="min-w-0 space-y-5">
               <section className="panel rounded-[22px] border border-white/10 bg-graphite/70 p-5 sm:p-6"><div className="flex items-center justify-between"><div><p className="eyebrow">Live transcript</p><h3 className="mt-1 font-display text-lg font-bold">Conversation</h3></div><span className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-bold text-mute">{chat.length} events</span></div><div className="mt-5 space-y-4">{chat.slice(-3).map((item, index) => <div key={`${item.time}-${index}`} className={cn("flex gap-3", item.role === "user" && "flex-row-reverse text-right")}><div className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", item.role === "assistant" ? "bg-mint/15 text-mint" : "bg-sky/15 text-sky")} >{item.role === "assistant" ? <Bot className="h-3.5 w-3.5" /> : <UserRound className="h-3.5 w-3.5" />}</div><div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[0.12em] text-mute">{item.role === "assistant" ? "TechSəs" : "You"} <span className="ml-1 font-normal normal-case tracking-normal text-white/25">{item.time}</span></p><p className="mt-1 text-xs leading-5 text-white/75">{item.text}</p></div></div>)}</div><div className="mt-5 flex items-center gap-2 border-t border-white/10 pt-4"><div className="flex -space-x-1.5"><span className="mini-avatar bg-mint text-ink">TS</span><span className="mini-avatar bg-sky text-ink">AI</span></div><span className="text-[11px] text-mute">Voice agent is standing by</span><span className="ml-auto"><Volume2 className="h-3.5 w-3.5 text-mint" /></span></div></section>
-              <section className="ticket-card rounded-[22px] border border-white/10 bg-paper p-5 text-ink sm:p-6"><div className="flex items-start justify-between"><div><p className="eyebrow text-ink/45">Ticket draft</p><h3 className="mt-1 font-display text-lg font-bold">{ticketCreated ? "Ticket created" : "Ready to summarize"}</h3></div><div className={cn("rounded-xl p-2.5", ticketCreated ? "bg-mint" : "bg-ink text-mint")}>{ticketCreated ? <Check className="h-4 w-4" /> : <Ticket className="h-4 w-4" />}</div></div><div className="mt-5 rounded-xl bg-ink/[0.06] p-4"><div className="flex items-center justify-between gap-3"><span className="text-xs font-bold text-ink/50">{activeIssue.category} / {activeIssueId.toUpperCase()}-024</span><span className={cn("priority", `priority-${activeIssue.priority.toLowerCase()}`)}>{activeIssue.priority}</span></div><p className="mt-3 text-sm font-bold leading-5">{activeIssue.label}</p><p className="mt-1 text-xs leading-5 text-ink/55">Suggested next step: {activeIssue.action}</p></div><Button onClick={createTicket} disabled={ticketCreated || sessionState === "ready"} className="mt-4 h-11 w-full rounded-xl bg-ink font-bold text-paper hover:bg-ink/85 disabled:opacity-50">{ticketCreated ? <><Check className="mr-2 h-4 w-4 text-mint" /> Draft saved to tickets</> : <><Send className="mr-2 h-4 w-4" /> Create ticket summary</>}</Button><p className="mt-3 flex items-center justify-center gap-1 text-center text-[10px] text-ink/45"><ShieldCheck className="h-3 w-3" /> No data leaves this demo</p></section>
+              <section className="ticket-card rounded-[22px] border border-white/10 bg-paper p-5 text-ink sm:p-6"><div className="flex items-start justify-between"><div><p className="eyebrow text-ink/45">Ticket draft</p><h3 className="mt-1 font-display text-lg font-bold">{ticketCreated ? "Ticket created" : "Ready to summarize"}</h3></div><div className={cn("rounded-xl p-2.5", ticketCreated ? "bg-mint" : "bg-ink text-mint")}>{ticketCreated ? <Check className="h-4 w-4" /> : <Ticket className="h-4 w-4" />}</div></div><div className="mt-5 rounded-xl bg-ink/[0.06] p-4"><div className="flex items-center justify-between gap-3"><span className="text-xs font-bold text-ink/50">{activeIssue.category} / {activeIssueId.toUpperCase()}-024</span><span className={cn("priority", `priority-${activeIssue.priority.toLowerCase()}`)}>{activeIssue.priority}</span></div><p className="mt-3 text-sm font-bold leading-5">{activeIssue.label}</p><p className="mt-1 text-xs leading-5 text-ink/55">Suggested next step: {activeIssue.action}</p></div><Button onClick={createTicket} disabled={ticketCreated || sessionState === "ready"} className="mt-4 h-11 w-full rounded-xl bg-ink font-bold text-paper hover:bg-ink/85 disabled:opacity-50">{ticketCreated ? <><Check className="mr-2 h-4 w-4 text-mint" /> Draft saved to tickets</> : <><Send className="mr-2 h-4 w-4" /> Create ticket summary</>}</Button><p className="mt-3 flex items-center justify-center gap-1 text-center text-[10px] text-ink/45"><ShieldCheck className="h-3 w-3" /> {connectionMode === "live" ? "Audio streamed securely to AssemblyAI" : "Demo mode — no audio is sent"}</p></section>
             </aside>
           </section>
           <footer className="mt-8 flex flex-col gap-2 border-t border-white/10 py-5 text-[10px] uppercase tracking-[0.14em] text-mute sm:flex-row sm:items-center sm:justify-between"><span>TechSəs / Voice-first IT support</span><span className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5 text-mint" /> Built for AssemblyAI Hackathon</span></footer>
