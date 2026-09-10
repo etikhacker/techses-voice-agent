@@ -17,6 +17,11 @@ describe("TechSəs issue catalog", () => {
   });
 
   it("contains the four MVP support paths", () => {
-    expect(issues.map((issue) => issue.id)).toEqual(["wifi", "printer", "windows", "account"]);
+    expect(issues.map(issue => issue.id)).toEqual([
+      "wifi",
+      "printer",
+      "windows",
+      "account",
+    ]);
   });
 });

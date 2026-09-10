@@ -1,11 +1,20 @@
 export type VoiceLanguage = "az" | "en";
 
-export const voiceLanguages: Array<{ value: VoiceLanguage; label: string; shortLabel: string }> = [
+export const voiceLanguages: Array<{
+  value: VoiceLanguage;
+  label: string;
+  shortLabel: string;
+}> = [
   { value: "az", label: "Azərbaycan dili", shortLabel: "AZ" },
   { value: "en", label: "English", shortLabel: "EN" },
 ];
 
-export type ViewKey = "overview" | "voiceSessions" | "tickets" | "knowledge" | "settings";
+export type ViewKey =
+  | "overview"
+  | "voiceSessions"
+  | "tickets"
+  | "knowledge"
+  | "settings";
 
 const copy = {
   az: {
@@ -27,7 +36,8 @@ const copy = {
     liveBadge: "AssemblyAI canlı",
     readyBadge: "AssemblyAI hazırdır",
     helpTitle: "TechSəs haqqında",
-    helpText: "TechSəs IT problemlərini səsli şəkildə analiz edir və ticket xülasəsi hazırlayır.",
+    helpText:
+      "TechSəs IT problemlərini səsli şəkildə analiz edir və ticket xülasəsi hazırlayır.",
     notificationsTitle: "Bildirişlər",
     noNotifications: "Hazırda yeni bildiriş yoxdur.",
     closeLabel: "Bağla",
@@ -79,7 +89,8 @@ const copy = {
     roleUser: "Siz",
     voiceStandingBy: "Səs agenti hazır gözləyir",
     liveTyping: "Canlı yazır",
-    noMessages: "Hələ ki, mesaj yoxdur. Səs sessiyasını başladın və ya problem seçin.",
+    noMessages:
+      "Hələ ki, mesaj yoxdur. Səs sessiyasını başladın və ya problem seçin.",
 
     // Ticket panel
     ticketDraft: "Ticket layihəsi",
@@ -90,13 +101,17 @@ const copy = {
     draftSaved: "Ticket ticketlərə saxlanıldı",
     audioSecureLive: "Audio təhlükəsiz şəkildə AssemblyAI-ya ötürülür",
     audioSecureDemo: "Demo rejimi — heç bir audio göndərilmir",
-    priority: { Low: "Aşağı", Medium: "Orta", High: "Yüksək" } as Record<"Low" | "Medium" | "High", string>,
+    priority: { Low: "Aşağı", Medium: "Orta", High: "Yüksək" } as Record<
+      "Low" | "Medium" | "High",
+      string
+    >,
 
     // Toasts
     ticketToastTitle: "Ticket xülasəsi yaradıldı",
     ticketToastDescription: "İş sahənizə saxlanıldı.",
     voiceSessionsToastTitle: "Səs sessiyaları",
-    voiceSessionsToastDescription: "Bu bölmə hazırlanır, tezliklə əlçatan olacaq.",
+    voiceSessionsToastDescription:
+      "Bu bölmə hazırlanır, tezliklə əlçatan olacaq.",
     knowledgeToastTitle: "Bilik bazası",
     knowledgeToastDescription: "Aşağıya bax — ən çox verilən suallar.",
     settingsToastTitle: "Parametrlər",
@@ -114,7 +129,8 @@ const copy = {
     // Views — Voice sessions
     sessionsHeading: "Səs sessiyaları",
     sessionsDescription: "Son səsli söhbətlər və onların nəticələri.",
-    sessionsEmpty: "Hələ ki, başa çatmış sessiya yoxdur. Səs sessiyasını başladın.",
+    sessionsEmpty:
+      "Hələ ki, başa çatmış sessiya yoxdur. Səs sessiyasını başladın.",
     sessionsItemTranscript: "Transkript",
     sessionsItemDuration: "Müddət",
     sessionsItemStatus: "Status",
@@ -129,9 +145,11 @@ const copy = {
     // Views — Tickets
     ticketsHeading: "Ticketlər",
     ticketsDescription: "Yaradılmış ticket xülasələri və prioritetləri.",
-    ticketsEmpty: "Hələ ki, ticket yoxdur. Söhbət bitdikdən sonra \"Ticket xülasəsi yarat\" düyməsini basın.",
+    ticketsEmpty:
+      'Hələ ki, ticket yoxdur. Söhbət bitdikdən sonra "Ticket xülasəsi yarat" düyməsini basın.',
     ticketsCount: (n: number) => `${n} ticket`,
-    ticketNumber: (id: string) => `${id.toUpperCase()}-${(Math.floor(Math.random() * 9000) + 1000).toString()}`,
+    ticketNumber: (id: string) =>
+      `${id.toUpperCase()}-${(Math.floor(Math.random() * 9000) + 1000).toString()}`,
     ticketStage: "Mərhələ",
     ticketStageDraft: "Layihə",
     ticketStageInProgress: "İcradadır",
@@ -149,11 +167,11 @@ const copy = {
       },
       {
         q: "Canlı rejimə necə keçə bilərəm?",
-        a: "\"Səs sessiyasını başlat\" düyməsini basdıqda, sistem avtomatik olaraq canlı rejimə keçir.",
+        a: '"Səs sessiyasını başlat" düyməsini basdıqda, sistem avtomatik olaraq canlı rejimə keçir.',
       },
       {
         q: "Ticket xülasəsini necə saxlayım?",
-        a: "Söhbət bitdikdən sonra \"Ticket xülasəsi yarat\" düyməsini basın — ticket Tickets bölməsinə əlavə olunur.",
+        a: 'Söhbət bitdikdən sonra "Ticket xülasəsi yarat" düyməsini basın — ticket Tickets bölməsinə əlavə olunur.',
       },
       {
         q: "Dilim dəstəklənir?",
@@ -176,7 +194,8 @@ const copy = {
     settingsResetDone: "Parametrlər standarta qaytarıldı",
 
     // Voice session greeting (chat bootstrap)
-    chatBootstrap: "Salam, {name}. Kompüter problemini təsvir et — mən diaqnostikanı başladım.",
+    chatBootstrap:
+      "Salam, {name}. Kompüter problemini təsvir et — mən diaqnostikanı başladım.",
     chatReset: "Yeni sessiya hazırdır. Problemini mənə danışa bilərsən.",
 
     // Generic
@@ -204,7 +223,8 @@ const copy = {
     liveBadge: "AssemblyAI live",
     readyBadge: "AssemblyAI-ready",
     helpTitle: "About TechSes",
-    helpText: "TechSes analyzes IT issues through voice and prepares structured ticket summaries.",
+    helpText:
+      "TechSes analyzes IT issues through voice and prepares structured ticket summaries.",
     notificationsTitle: "Notifications",
     noNotifications: "There are no new notifications.",
     closeLabel: "Close",
@@ -220,16 +240,19 @@ const copy = {
     // Voice card
     stateReadyEyebrow: "READY WHEN YOU ARE",
     stateReadyTitle: "How can I help?",
-    stateReadyDescription: "Start a conversation or choose a common issue below.",
+    stateReadyDescription:
+      "Start a conversation or choose a common issue below.",
     stateListeningEyebrow: "LISTENING NOW",
     stateListeningTitle: "I'm listening…",
     stateListeningDescription: "Describe what's happening in your own words.",
     stateThinkingEyebrow: "ANALYZING SIGNAL",
     stateThinkingTitle: "Connecting the dots…",
-    stateThinkingDescription: "Checking the issue pattern and preparing a next step.",
+    stateThinkingDescription:
+      "Checking the issue pattern and preparing a next step.",
     stateRespondedEyebrow: "RESPONSE READY",
     stateRespondedTitle: "Here's the next move",
-    stateRespondedDescription: "Review the recommendation, then create a ticket summary.",
+    stateRespondedDescription:
+      "Review the recommendation, then create a ticket summary.",
     liveAudio: "Live audio session",
     demoFallback: "Demo fallback active",
     startLabel: "Start voice session",
@@ -267,13 +290,17 @@ const copy = {
     draftSaved: "Draft saved to tickets",
     audioSecureLive: "Audio streamed securely to AssemblyAI",
     audioSecureDemo: "Demo mode — no audio is sent",
-    priority: { Low: "Low", Medium: "Medium", High: "High" } as Record<"Low" | "Medium" | "High", string>,
+    priority: { Low: "Low", Medium: "Medium", High: "High" } as Record<
+      "Low" | "Medium" | "High",
+      string
+    >,
 
     // Toasts
     ticketToastTitle: "Ticket summary created",
     ticketToastDescription: "Saved to your workspace.",
     voiceSessionsToastTitle: "Voice sessions",
-    voiceSessionsToastDescription: "This section is being prepared and will be available soon.",
+    voiceSessionsToastDescription:
+      "This section is being prepared and will be available soon.",
     knowledgeToastTitle: "Knowledge base",
     knowledgeToastDescription: "See the most common questions below.",
     settingsToastTitle: "Settings",
@@ -306,9 +333,11 @@ const copy = {
     // Views — Tickets
     ticketsHeading: "Tickets",
     ticketsDescription: "Created ticket summaries and their priorities.",
-    ticketsEmpty: "No tickets yet. After a conversation ends, click \"Create ticket summary\".",
+    ticketsEmpty:
+      'No tickets yet. After a conversation ends, click "Create ticket summary".',
     ticketsCount: (n: number) => `${n} tickets`,
-    ticketNumber: (id: string) => `${id.toUpperCase()}-${(Math.floor(Math.random() * 9000) + 1000).toString()}`,
+    ticketNumber: (id: string) =>
+      `${id.toUpperCase()}-${(Math.floor(Math.random() * 9000) + 1000).toString()}`,
     ticketStage: "Stage",
     ticketStageDraft: "Draft",
     ticketStageInProgress: "In progress",
@@ -326,11 +355,11 @@ const copy = {
       },
       {
         q: "How do I switch to live mode?",
-        a: "When you press \"Start voice session\", the system automatically switches to live mode.",
+        a: 'When you press "Start voice session", the system automatically switches to live mode.',
       },
       {
         q: "How do I save a ticket summary?",
-        a: "After the conversation ends, click \"Create ticket summary\" — the ticket is added to the Tickets view.",
+        a: 'After the conversation ends, click "Create ticket summary" — the ticket is added to the Tickets view.',
       },
       {
         q: "Is my language supported?",
@@ -346,14 +375,16 @@ const copy = {
     settingsVolume: "Volume",
     settingsVolumeDescription: "Adjust the response volume from 0 to 100.",
     settingsAutoSpeak: "Auto-play responses",
-    settingsAutoSpeakDescription: "Read out the voice agent's responses automatically.",
+    settingsAutoSpeakDescription:
+      "Read out the voice agent's responses automatically.",
     settingsSave: "Save",
     settingsSaved: "Preferences saved",
     settingsReset: "Reset to defaults",
     settingsResetDone: "Preferences reset to defaults",
 
     // Voice session greeting (chat bootstrap)
-    chatBootstrap: "Hi {name}, describe your computer problem and I'll start the diagnosis.",
+    chatBootstrap:
+      "Hi {name}, describe your computer problem and I'll start the diagnosis.",
     chatReset: "A new session is ready. Tell me what's happening.",
 
     // Generic
@@ -494,7 +525,10 @@ export type VoiceCopy = {
   today: string;
 };
 
-export const getVoiceCopy = (language: VoiceLanguage): VoiceCopy => copy[language];
+export const getVoiceCopy = (language: VoiceLanguage): VoiceCopy =>
+  copy[language];
 
-export const localizePriority = (priority: "Low" | "Medium" | "High", language: VoiceLanguage) =>
-  copy[language].priority[priority];
+export const localizePriority = (
+  priority: "Low" | "Medium" | "High",
+  language: VoiceLanguage
+) => copy[language].priority[priority];

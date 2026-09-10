@@ -1,6 +1,7 @@
 # TechSəs MVP Plan
 
 ## Implementation order
+
 1. Establish design system and page shell.
 2. Add typed issue data and interaction state.
 3. Build session panel, conversation timeline, and issue cards.
@@ -9,6 +10,7 @@
 6. Run typecheck/build and preview screenshots.
 
 ## Design direction
+
 - Visual language: dark operations console with warm paper-white content panels and electric mint signal accents.
 - Typography: Space Grotesk for display/UI labels, Manrope for readable body copy.
 - Palette: ink `#101111`, graphite `#1B1F1E`, paper `#F4F3EE`, mint `#C7F36B`, sky `#9DDCF6`, amber `#F6C76B`, coral `#FF806B`.
@@ -18,6 +20,7 @@
 - Motion: 160–220ms ease-out; subtle waveform pulse and staggered card entrances; reduced-motion fallback.
 
 ## Task list
+
 - [ ] Replace scaffold Home page with the TechSəs console.
   - Acceptance: desktop shell includes sidebar, session hero, transcript, issue shortcuts, and ticket panel.
   - Verify: `pnpm check` and screenshot at `/`.

@@ -36,16 +36,16 @@ Create a structured ticket summary when escalation is needed
 
 ## Features
 
-| Feature | Description |
-| --- | --- |
-| Real-time voice session | Captures microphone input and connects the browser to the AssemblyAI Voice Agent WebSocket. |
-| Live transcript | Displays user and agent messages as the conversation progresses. |
-| Spoken troubleshooting | Streams agent audio back to the browser through the Web Audio API. |
-| Issue shortcuts | Includes focused flows for Wi-Fi, printer, Windows, and account problems. |
-| Ticket preparation | Creates a structured draft containing issue category, priority, suggested action, and escalation context. |
-| Secure token flow | Generates short-lived AssemblyAI tokens on the server; the permanent API key is never sent to the browser. |
-| Safe fallback | Keeps the issue-demo flows usable when microphone permission or a live connection is unavailable. |
-| Responsive support console | Works across desktop and mobile layouts. |
+| Feature                    | Description                                                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Real-time voice session    | Captures microphone input and connects the browser to the AssemblyAI Voice Agent WebSocket.                |
+| Live transcript            | Displays user and agent messages as the conversation progresses.                                           |
+| Spoken troubleshooting     | Streams agent audio back to the browser through the Web Audio API.                                         |
+| Issue shortcuts            | Includes focused flows for Wi-Fi, printer, Windows, and account problems.                                  |
+| Ticket preparation         | Creates a structured draft containing issue category, priority, suggested action, and escalation context.  |
+| Secure token flow          | Generates short-lived AssemblyAI tokens on the server; the permanent API key is never sent to the browser. |
+| Safe fallback              | Keeps the issue-demo flows usable when microphone permission or a live connection is unavailable.          |
+| Responsive support console | Works across desktop and mobile layouts.                                                                   |
 
 ## Technical architecture
 
@@ -69,16 +69,16 @@ This separation keeps the long-lived credential in the Vercel environment and li
 
 ## Technology stack
 
-| Layer | Technology |
-| --- | --- |
-| User interface | React 19, TypeScript, Vite, Tailwind CSS |
-| Voice agent | AssemblyAI Voice Agent API over WebSocket |
-| Audio input | Browser `getUserMedia`, PCM16 audio frames, 24 kHz mono |
-| Audio output | Web Audio API with scheduled PCM playback |
-| Backend token route | Vercel Serverless Function |
-| Development backend | Express and tRPC |
-| Testing | Vitest |
-| Deployment | Vercel connected to GitHub |
+| Layer               | Technology                                              |
+| ------------------- | ------------------------------------------------------- |
+| User interface      | React 19, TypeScript, Vite, Tailwind CSS                |
+| Voice agent         | AssemblyAI Voice Agent API over WebSocket               |
+| Audio input         | Browser `getUserMedia`, PCM16 audio frames, 24 kHz mono |
+| Audio output        | Web Audio API with scheduled PCM playback               |
+| Backend token route | Vercel Serverless Function                              |
+| Development backend | Express and tRPC                                        |
+| Testing             | Vitest                                                  |
+| Deployment          | Vercel connected to GitHub                              |
 
 ## Live demo
 
@@ -188,6 +188,7 @@ The current MVP is intentionally focused. It does not yet persist user accounts,
 This project is provided for hackathon and educational use. Add a formal open-source license before distributing it as a reusable library or commercial product.
 
 ## References
+
 - [AssemblyAI Voice Agents documentation](https://www.assemblyai.com/docs/voice-agents)
 - [AssemblyAI Voice Agent token API](https://www.assemblyai.com/docs/api-reference/voice-agent-api/generate-voice-agent-token)
 - [Vercel Functions documentation](https://vercel.com/docs/functions)

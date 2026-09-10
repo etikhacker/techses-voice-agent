@@ -14,7 +14,10 @@ export type Issue = {
   color: string;
 };
 
-const issueRecords: Record<IssueId, { az: Omit<Issue, "id">; en: Omit<Issue, "id"> }> = {
+const issueRecords: Record<
+  IssueId,
+  { az: Omit<Issue, "id">; en: Omit<Issue, "id"> }
+> = {
   wifi: {
     az: {
       label: "Wi-Fi qoşulur, internet işləmir",
@@ -22,7 +25,8 @@ const issueRecords: Record<IssueId, { az: Omit<Issue, "id">; en: Omit<Issue, "id
       prompt: "Wi-Fi qoşulur, amma internet işləmir.",
       response:
         "Router bağlantısı görünür, lakin internet çıxışı yoxdur. Əvvəlcə router-i 30 saniyə söndürüb yenidən qoşaq, sonra digər cihazlarda əlaqəni yoxlayaq.",
-      action: "Router-i 30 saniyə söndürüb yenidən yandır, sonra ikinci cihazda yoxla",
+      action:
+        "Router-i 30 saniyə söndürüb yenidən yandır, sonra ikinci cihazda yoxla",
       category: "Şəbəkə",
       priority: "Medium",
       color: "mint",
@@ -46,7 +50,8 @@ const issueRecords: Record<IssueId, { az: Omit<Issue, "id">; en: Omit<Issue, "id
       prompt: "Printer görünür, amma çap əmri getmir.",
       response:
         "Printer növbədə ilişib qala bilər. Print queue-nu təmizləyin, printeri yenidən başladın və Wi-Fi/kabel bağlantısını yoxlayın.",
-      action: "Print queue-nu təmizlə, printeri yenidən başlat və şəbəkəni yoxla",
+      action:
+        "Print queue-nu təmizlə, printeri yenidən başlat və şəbəkəni yoxla",
       category: "Avadanlıq",
       priority: "Medium",
       color: "sky",
@@ -57,7 +62,8 @@ const issueRecords: Record<IssueId, { az: Omit<Issue, "id">; en: Omit<Issue, "id
       prompt: "The printer is visible, but the print job does not go through.",
       response:
         "The print queue may be stuck. Clear the queue, restart the printer, and check its network connection.",
-      action: "Clear the print queue, restart the printer, and verify the network",
+      action:
+        "Clear the print queue, restart the printer, and verify the network",
       category: "Hardware",
       priority: "Medium",
       color: "sky",
@@ -113,12 +119,17 @@ const issueRecords: Record<IssueId, { az: Omit<Issue, "id">; en: Omit<Issue, "id
   },
 };
 
-export const issues: Issue[] = (Object.keys(issueRecords) as IssueId[]).map((id) => ({
-  id,
-  ...issueRecords[id].az,
-}));
+export const issues: Issue[] = (Object.keys(issueRecords) as IssueId[]).map(
+  id => ({
+    id,
+    ...issueRecords[id].az,
+  })
+);
 
-export const getIssue = (id: IssueId, language: VoiceLanguage = "az"): Issue => ({
+export const getIssue = (
+  id: IssueId,
+  language: VoiceLanguage = "az"
+): Issue => ({
   id,
   ...issueRecords[id][language],
 });

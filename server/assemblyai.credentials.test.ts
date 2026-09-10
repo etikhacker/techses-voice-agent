@@ -10,9 +10,12 @@ describe("AssemblyAI credentials", () => {
       return;
     }
 
-    const response = await fetch("https://api.assemblyai.com/v2/transcript?limit=1", {
-      headers: { Authorization: apiKey as string },
-    });
+    const response = await fetch(
+      "https://api.assemblyai.com/v2/transcript?limit=1",
+      {
+        headers: { Authorization: apiKey as string },
+      }
+    );
 
     expect(response.status).not.toBe(401);
     expect(response.status).not.toBe(403);
