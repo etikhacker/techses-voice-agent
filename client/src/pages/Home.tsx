@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getIssue, issues, type Issue, type IssueId } from "@/lib/issueData";
 import { trpc } from "@/lib/trpc";
+import { getVoiceCopy, voiceLanguages, type VoiceLanguage } from "@/lib/voiceLanguage";
 
 type SessionState = "ready" | "listening" | "thinking" | "responded";
 type ChatItem = { role: "user" | "assistant"; text: string; time: string };
@@ -68,6 +69,12 @@ export default function Home() {
   const [showToast, setShowToast] = useState(false);
   const [connectionMode, setConnectionMode] = useState<"demo" | "live">("demo");
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<VoiceLanguage>("az");
+  const [draftText, setDraftText] = useState("");
+  const [showTypeInput, setShowTypeInput] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [activeNav, setActiveNav] = useState("Overview");
   const createVoiceToken = trpc.voiceAgent.createToken.useQuery(undefined, { enabled: false });
   const socketRef = useRef<WebSocket | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -79,6 +86,18 @@ export default function Home() {
   const sessionReadyRef = useRef(false);
 
   const activeIssue = useMemo(() => getIssue(activeIssueId), [activeIssueId]);
+  const voiceCopy = getVoiceCopy(language);
+
+  const localizedIssue = useMemo(() => {
+    if (language === "az") return activeIssue;
+    const english = {
+      wifi: { prompt: "Wi-Fi connects, but the internet does not work.", response: "The router connection is visible, but internet access is unavailable. Restart the router for 30 seconds, then check another device." },
+      printer: { prompt: "The printer is visible, but the print job does not go through.", response: "The print queue may be stuck. Clear the queue, restart the printer, and check its network connection." },
+      windows: { prompt: "A Windows app closes as soon as it opens.", response: "This may be caused by a damaged cache or an outdated version. Update the app, clear its cache, and restart Windows." },
+      account: { prompt: "I cannot access my account and cannot reset the password.", response: "Account access should be verified securely first. After verification, a password reset link can be sent." },
+    }[activeIssue.id];
+    return { ...activeIssue, prompt: english.prompt, response: english.response };
+  }, [activeIssue, language]);
 
   const stopLiveAudio = () => {
     sessionReadyRef.current = false;
@@ -127,11 +146,11 @@ export default function Home() {
   useEffect(() => {
     if (sessionState !== "thinking" || connectionMode !== "demo") return;
     const timeout = window.setTimeout(() => {
-      setChat((current) => [...current, { role: "assistant", text: activeIssue.response, time: timeNow() }]);
+      setChat((current) => [...current, { role: "assistant", text: localizedIssue.response, time: timeNow() }]);
       setSessionState("responded");
     }, 850);
     return () => window.clearTimeout(timeout);
-  }, [activeIssue, sessionState]);
+  }, [localizedIssue, sessionState, connectionMode]);
 
   const startListening = async () => {
     setTicketCreated(false);
@@ -155,8 +174,8 @@ export default function Home() {
         socket.send(JSON.stringify({
           type: "session.update",
           session: {
-            system_prompt: "Sən TechSəs adlı IT help desk səsli agentsən. İstifadəçi Azərbaycan və ya ingilis dilində danışa bilər; eyni dildə cavab ver. Qısa, praktik və təhlükəsiz troubleshooting addımları ver. Əmin olmadıqda bunu açıq de və ticket yaratmağı təklif et.",
-            greeting: "Salam, mən TechSəsəm. Kompüter problemini danış, birlikdə həll edək.",
+            system_prompt: language === "az" ? "Sən TechSəs adlı IT help desk səsli agentsən. Azərbaycan dilində cavab ver. Qısa, praktik və təhlükəsiz troubleshooting addımları ver. Əmin olmadıqda bunu açıq de və ticket yaratmağı təklif et." : "You are TechSes, a practical IT help desk voice agent. Always respond in English. Give short, safe troubleshooting steps. If uncertain, say so clearly and offer to create a ticket.",
+            greeting: voiceCopy.greeting,
             input: { format: { encoding: "audio/pcm" }, keyterms: ["AssemblyAI", "TechSəs", "Wi-Fi", "Windows", "router"] },
             output: { voice: "anna", format: { encoding: "audio/pcm" }, volume: 85 },
           },
@@ -221,7 +240,17 @@ export default function Home() {
   const chooseIssue = (issue: Issue) => {
     setActiveIssueId(issue.id);
     setTicketCreated(false);
-    setChat((current) => [...current, { role: "user", text: issue.prompt, time: timeNow() }]);
+    const prompt = language === "az" ? issue.prompt : localizedIssue.id === issue.id ? localizedIssue.prompt : issue.prompt;
+    setChat((current) => [...current, { role: "user", text: prompt, time: timeNow() }]);
+    setSessionState("thinking");
+  };
+
+  const submitTypedMessage = () => {
+    const text = draftText.trim();
+    if (!text) return;
+    setChat((current) => [...current, { role: "user", text, time: timeNow() }]);
+    setDraftText("");
+    setShowTypeInput(false);
     setSessionState("thinking");
   };
 
@@ -242,10 +271,10 @@ export default function Home() {
   };
 
   const stateCopy = {
-    ready: { eyebrow: "READY WHEN YOU ARE", title: "How can I help?", description: "Start a conversation or choose a common issue below." },
-    listening: { eyebrow: "LISTENING NOW", title: "I’m listening…", description: "Describe what’s happening in your own words." },
-    thinking: { eyebrow: "ANALYZING SIGNAL", title: "Connecting the dots…", description: "Checking the issue pattern and preparing a next step." },
-    responded: { eyebrow: "RESPONSE READY", title: "Here’s the next move", description: "Review the recommendation, then create a ticket summary." },
+    ready: { eyebrow: language === "en" ? "READY WHEN YOU ARE" : "HAZIRDIR", title: language === "en" ? "How can I help?" : "Sizə necə kömək edim?", description: language === "en" ? "Start a conversation or choose a common issue below." : "Söhbətə başlayın və ya aşağıdan problemi seçin." },
+    listening: { eyebrow: language === "en" ? "LISTENING NOW" : "DİNLƏYİRƏM", title: language === "en" ? "I’m listening…" : "Sizi dinləyirəm…", description: language === "en" ? "Describe what’s happening in your own words." : "Baş verənləri öz sözlərinizlə təsvir edin." },
+    thinking: { eyebrow: language === "en" ? "ANALYZING SIGNAL" : "ANALİZ EDİRƏM", title: language === "en" ? "Connecting the dots…" : "Məlumatları əlaqələndirirəm…", description: language === "en" ? "Checking the issue pattern and preparing a next step." : "Problemi yoxlayıb növbəti addımı hazırlayıram." },
+    responded: { eyebrow: language === "en" ? "RESPONSE READY" : "CAVAB HAZIRDIR", title: language === "en" ? "Here’s the next move" : "Növbəti addım budur", description: language === "en" ? "Review the recommendation, then create a ticket summary." : "Tövsiyəni yoxlayın və ticket xülasəsi yaradın." },
   }[sessionState];
 
   return (
@@ -259,17 +288,17 @@ export default function Home() {
           </div>
           <div className="mt-12 space-y-1">
             <p className="eyebrow px-3 pb-3">Workspace</p>
-            <NavItem icon={LayoutDashboard} label="Overview" active />
-            <NavItem icon={Headphones} label="Voice sessions" count="03" />
-            <NavItem icon={Ticket} label="Tickets" count="08" />
-            <NavItem icon={CircleHelp} label="Knowledge base" />
+            <NavItem icon={LayoutDashboard} label="Overview" active={activeNav === "Overview"} onClick={() => setActiveNav("Overview")} />
+            <NavItem icon={Headphones} label="Voice sessions" count="03" active={activeNav === "Voice sessions"} onClick={() => { setActiveNav("Voice sessions"); setShowToast(true); window.setTimeout(() => setShowToast(false), 2200); }} />
+            <NavItem icon={Ticket} label="Tickets" count="08" active={activeNav === "Tickets"} onClick={() => { setActiveNav("Tickets"); setTicketCreated(true); }} />
+            <NavItem icon={CircleHelp} label="Knowledge base" active={activeNav === "Knowledge base"} onClick={() => { setActiveNav("Knowledge base"); setShowHelp(true); }} />
           </div>
           <div className="mt-auto space-y-5">
             <div className="rounded-2xl border border-mint/20 bg-mint/10 p-4">
               <div className="flex items-center justify-between"><span className="eyebrow text-mint">System health</span><span className="status-dot" /></div>
               <p className="mt-3 text-sm font-semibold">All systems operational</p><p className="mt-1 text-xs leading-5 text-mute">Voice layer is ready for a new session.</p>
             </div>
-            <NavItem icon={Settings2} label="Settings" />
+            <NavItem icon={Settings2} label="Settings" active={activeNav === "Settings"} onClick={() => { setActiveNav("Settings"); setShowHelp(true); }} />
             <div className="flex items-center gap-3 border-t border-white/10 pt-4"><div className="avatar">OB</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">Omar Babayev</p><p className="text-xs text-mute">Builder account</p></div><MoreHorizontal className="h-4 w-4 text-mute" /></div>
           </div>
         </aside>
@@ -278,7 +307,7 @@ export default function Home() {
           <header className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 lg:hidden"><div className="brand-mark small"><span>TS</span></div><span className="font-display text-lg font-bold">TechSəs</span></div>
             <div className="hidden items-center gap-2 text-xs text-mute sm:flex"><span className="h-2 w-2 rounded-full bg-mint shadow-[0_0_12px_#C7F36B]" /> <span>Demo environment</span><span className="mx-1 text-white/20">/</span><span>Thu, 10 Sep 2026</span></div>
-            <div className="ml-auto flex items-center gap-2"><button className="icon-button" aria-label="Help"><CircleHelp className="h-4 w-4" /></button><button className="icon-button" aria-label="Notifications"><Activity className="h-4 w-4" /></button><div className="avatar ml-1">OB</div></div>
+            <div className="ml-auto flex items-center gap-2 relative"><div className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1 sm:flex" aria-label={voiceCopy.language}>{voiceLanguages.map((item) => <button key={item.value} onClick={() => setLanguage(item.value)} className={cn("rounded-full px-2 py-1 text-[10px] font-bold transition", language === item.value ? "bg-mint text-ink" : "text-mute hover:text-paper")} title={item.label}>{item.shortLabel}</button>)}</div><button onClick={() => setShowHelp((value) => !value)} className="icon-button" aria-label="Help"><CircleHelp className="h-4 w-4" /></button><button onClick={() => setShowNotifications((value) => !value)} className="icon-button" aria-label="Notifications"><Activity className="h-4 w-4" /></button><div className="avatar ml-1">OB</div>{(showHelp || showNotifications) && <div className="absolute right-0 top-12 z-20 w-72 rounded-2xl border border-white/10 bg-graphite p-4 shadow-2xl"><p className="eyebrow text-mint">{showHelp ? voiceCopy.helpTitle : voiceCopy.notificationsTitle}</p><p className="mt-2 text-sm leading-6 text-paper">{showHelp ? voiceCopy.helpText : voiceCopy.noNotifications}</p><button onClick={() => { setShowHelp(false); setShowNotifications(false); }} className="mt-3 text-xs font-bold text-mint">Close</button></div>}</div>
           </header>
 
           <section className="mt-8 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -288,11 +317,12 @@ export default function Home() {
                 <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-mint/10 blur-3xl" />
                 <div className="relative flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><span className={cn("live-pulse", sessionState !== "ready" && "active")} /><span className="eyebrow">{stateCopy.eyebrow}</span></div><h2 className="mt-4 font-display text-2xl font-bold tracking-[-0.03em] sm:text-3xl">{stateCopy.title}</h2><p className="mt-2 max-w-md text-sm leading-6 text-mute">{stateCopy.description}</p></div><div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-mute"><span className="text-mint">●</span> {connectionMode === "live" ? "AssemblyAI live" : "AssemblyAI-ready"}</div></div>
                 <div className="wave-wrap my-8" aria-label={sessionState === "listening" ? "Listening" : "Voice visualization"}>{Array.from({ length: 42 }).map((_, index) => <span key={index} className={cn("wave-bar", sessionState === "listening" && "wave-live", sessionState === "thinking" && "wave-thinking")} style={{ height: `${18 + ((index * 7) % 40)}px`, "--i": index } as React.CSSProperties } />)}</div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><Button onClick={sessionState === "listening" ? finishListening : startListening} disabled={createVoiceToken.isFetching} className="h-12 rounded-xl bg-mint px-5 font-bold text-ink hover:bg-[#d8ff83]">{sessionState === "listening" ? <><Pause className="mr-2 h-4 w-4" /> Finish speaking</> : <><Mic className="mr-2 h-4 w-4" /> Start voice session</>}</Button><button className="flex h-12 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-semibold text-mute transition hover:border-white/20 hover:text-paper" aria-label="Use keyboard input"><span className="kbd">⌘</span><span className="kbd">K</span><span className="hidden sm:inline">Type instead</span></button></div><span className="text-xs text-mute">{sessionState === "ready" ? "Microphone + AssemblyAI live" : connectionMode === "live" ? "Live audio session" : "Demo fallback active"}</span></div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><Button onClick={sessionState === "listening" ? finishListening : startListening} disabled={createVoiceToken.isFetching} className="h-12 rounded-xl bg-mint px-5 font-bold text-ink hover:bg-[#d8ff83]">{sessionState === "listening" ? <><Pause className="mr-2 h-4 w-4" /> {voiceCopy.finishLabel}</> : <><Mic className="mr-2 h-4 w-4" /> {voiceCopy.startLabel}</>}</Button><button onClick={() => setShowTypeInput((value) => !value)} className="flex h-12 items-center gap-2 rounded-xl border border-white/10 px-4 text-sm font-semibold text-mute transition hover:border-white/20 hover:text-paper" aria-label={voiceCopy.typeInstead}><span className="kbd">⌘</span><span className="kbd">K</span><span className="hidden sm:inline">{voiceCopy.typeInstead}</span></button></div><span className="text-xs text-mute">{sessionState === "ready" ? `${voiceCopy.language}: ${voiceCopy.demoEnvironment}` : connectionMode === "live" ? "Live audio session" : voiceCopy.demoFallback}</span></div>
+                {showTypeInput && <div className="relative mt-4 flex gap-2"><input value={draftText} onChange={(event) => setDraftText(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") submitTypedMessage(); }} placeholder={voiceCopy.typePlaceholder} className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-paper outline-none placeholder:text-mute focus:border-mint/50" autoFocus /><Button onClick={submitTypedMessage} className="rounded-xl bg-mint px-4 font-bold text-ink"><Send className="mr-2 h-4 w-4" />{voiceCopy.send}</Button></div>}
                 {liveError && <p className="relative mt-4 rounded-lg border border-coral/25 bg-coral/10 px-3 py-2 text-xs leading-5 text-coral">{liveError} You can still use the issue shortcuts below.</p>}
               </div>
 
-              <div className="mt-7 flex items-center justify-between"><div><p className="eyebrow">Quick start</p><h3 className="mt-1 font-display text-lg font-bold">What’s going on?</h3></div><button className="flex items-center gap-1 text-xs font-bold text-mute transition hover:text-mint">View all <ArrowUpRight className="h-3.5 w-3.5" /></button></div>
+              <div className="mt-7 flex items-center justify-between"><div><p className="eyebrow">Quick start</p><h3 className="mt-1 font-display text-lg font-bold">What’s going on?</h3></div><button onClick={() => { setActiveIssueId("wifi"); setTicketCreated(false); }} className="flex items-center gap-1 text-xs font-bold text-mute transition hover:text-mint">View all <ArrowUpRight className="h-3.5 w-3.5" /></button></div>
               <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">{issues.map((issue) => { const Icon = iconForIssue(issue.id); return <button key={issue.id} onClick={() => chooseIssue(issue)} className={cn("issue-card group text-left", activeIssueId === issue.id && "selected")}><div className={cn("issue-icon", `issue-${issue.color}`)}><Icon className="h-4 w-4" /></div><p className="mt-4 text-sm font-bold leading-5">{issue.shortLabel}</p><p className="mt-1 line-clamp-2 text-[11px] leading-4 text-mute">{issue.label}</p><ChevronRight className="absolute bottom-4 right-4 h-3.5 w-3.5 text-white/20 transition group-hover:translate-x-0.5 group-hover:text-mint" /></button>; })}</div>
             </div>
 
@@ -309,6 +339,6 @@ export default function Home() {
   );
 }
 
-function NavItem({ icon: Icon, label, active, count }: { icon: typeof Activity; label: string; active?: boolean; count?: string }) {
-  return <button className={cn("nav-item", active && "active")}><Icon className="h-4 w-4" /><span>{label}</span>{count && <span className="ml-auto text-[10px] text-mute">{count}</span>}</button>;
+function NavItem({ icon: Icon, label, active, count, onClick }: { icon: typeof Activity; label: string; active?: boolean; count?: string; onClick?: () => void }) {
+  return <button onClick={onClick} className={cn("nav-item", active && "active")}><Icon className="h-4 w-4" /><span>{label}</span>{count && <span className="ml-auto text-[10px] text-mute">{count}</span>}</button>;
 }
