@@ -139,8 +139,11 @@ export default function Home() {
     setSessionState("listening");
 
     try {
-      const tokenResult = await createVoiceToken.refetch();
-      const token = tokenResult.data?.token;
+      const directResponse = await fetch("/api/voice-agent-token");
+      const tokenResult = directResponse.ok
+        ? await directResponse.json() as { token?: string }
+        : (await createVoiceToken.refetch()).data;
+      const token = tokenResult?.token;
       if (!token) throw new Error("Temporary AssemblyAI token alınmadı.");
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("Bu brauzer mikrofon girişini dəstəkləmir.");
 
