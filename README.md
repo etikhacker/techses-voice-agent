@@ -1,62 +1,118 @@
 # TechSəs
 
-## Voice-first IT Help Desk for real-time support
+## Voice-first IT Help Desk powered by AssemblyAI
 
-TechSəs is a voice-first IT support agent built for the **AssemblyAI Voice Agent Hackathon**. It helps users describe technical problems naturally, receives live microphone audio, and responds with short troubleshooting guidance in the same language. The current MVP focuses on a polished support-console experience, real-time AssemblyAI Voice Agent integration, live transcript updates, agent audio playback, and ticket-summary preparation.
+TechSəs is a real-time voice support console for everyday IT problems. A user describes an issue naturally through a microphone, receives spoken troubleshooting guidance, sees the live conversation transcript, and can turn the conversation into a structured escalation ticket.
 
-> **Live demo:** [techses-voice-agent.vercel.app](https://techses-voice-agent.vercel.app)  
-> **Repository:** [github.com/etikhacker/techses-voice-agent](https://github.com/etikhacker/techses-voice-agent)
+The project was built as a solo submission for the **AssemblyAI Voice Agent Hackathon** by **Omar / etikhacker**.
 
-![TechSəs dashboard](docs/techses-dashboard.png)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-techses--voice--agent.vercel.app-0f766e?style=for-the-badge)](https://techses-voice-agent.vercel.app)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-111827?style=for-the-badge&logo=github)](https://github.com/etikhacker/techses-voice-agent)
+[![AssemblyAI](https://img.shields.io/badge/Powered%20by-AssemblyAI-7c3aed?style=for-the-badge)](https://www.assemblyai.com/)
 
-## Why TechSəs
+![TechSəs support console](docs/techses-dashboard.png)
 
-IT support often starts with an incomplete description such as “Wi-Fi is connected but nothing opens” or “the printer stopped responding.” TechSəs turns that unstructured conversation into a guided support flow. The user speaks naturally, the agent identifies the issue, proposes a practical next step, and prepares a concise ticket summary when escalation is needed.
+## Why TechSəs?
 
-The experience is designed for help-desk operators and end users rather than for developers. The interface makes the current voice state, transcript, issue category, suggested action, and ticket status visible in one console.
+IT support frequently begins with an incomplete description such as “Wi-Fi is connected but nothing opens” or “the printer stopped responding.” Users should not need to understand technical terminology before they can receive useful help.
 
-## Core capabilities
+TechSəs provides a voice-first support flow that is easier to start and easier to understand. The user speaks naturally. The agent identifies the support context, suggests a practical next step, keeps the transcript visible, and prepares a concise ticket summary when human escalation is appropriate.
 
-| Capability | Implementation |
+## Core workflow
+
+```text
+Speak naturally
+      |
+      v
+AssemblyAI Voice Agent receives the conversation
+      |
+      +--> live user transcript
+      +--> spoken agent response
+      +--> suggested troubleshooting action
+      |
+      v
+Create a structured ticket summary when escalation is needed
+```
+
+## Features
+
+| Feature | Description |
 | --- | --- |
-| Real-time voice conversation | AssemblyAI Voice Agent API over WebSocket |
-| Secure browser authentication | Short-lived server-generated AssemblyAI token; permanent key stays server-side |
-| Microphone input | Browser `getUserMedia` with echo cancellation and noise suppression |
-| Audio transport | Base64 PCM16, 24 kHz mono audio frames |
-| Agent output | Streaming PCM audio decoded and scheduled through the Web Audio API |
-| Live transcript | User and agent transcript events rendered in the conversation panel |
-| IT issue shortcuts | Wi-Fi, printer, Windows, and account issue flows |
-| Ticket preparation | Issue category, priority, suggested action, and draft ticket summary |
-| Deployment | Vercel production deployment with a serverless token endpoint |
-| Safe fallback | Demo issue flows remain usable if microphone access or live connection is unavailable |
+| Real-time voice session | Captures microphone input and connects the browser to the AssemblyAI Voice Agent WebSocket. |
+| Live transcript | Displays user and agent messages as the conversation progresses. |
+| Spoken troubleshooting | Streams agent audio back to the browser through the Web Audio API. |
+| Issue shortcuts | Includes focused flows for Wi-Fi, printer, Windows, and account problems. |
+| Ticket preparation | Creates a structured draft containing issue category, priority, suggested action, and escalation context. |
+| Secure token flow | Generates short-lived AssemblyAI tokens on the server; the permanent API key is never sent to the browser. |
+| Safe fallback | Keeps the issue-demo flows usable when microphone permission or a live connection is unavailable. |
+| Responsive support console | Works across desktop and mobile layouts. |
 
-## Architecture
+## Technical architecture
 
 ```mermaid
 flowchart LR
-    U[User microphone] --> B[TechSəs browser UI]
+    U[User microphone] --> B[TechSəs React client]
     B -->|GET /api/voice-agent-token| V[Vercel serverless function]
     V -->|Bearer API key| A[AssemblyAI token API]
-    A -->|Temporary one-time token| B
-    B <-->|PCM16 audio + events| WSS[AssemblyAI Voice Agent WebSocket]
-    WSS -->|transcript and reply audio| B
+    A -->|Temporary token| B
+    B <-->|PCM16 audio and events| W[AssemblyAI Voice Agent WebSocket]
+    W -->|Transcript events| B
+    W -->|Reply audio| B
     B --> T[Ticket summary panel]
 ```
 
-The browser never receives the permanent `ASSEMBLYAI_API_KEY`. It requests a one-time token from `/api/voice-agent-token`, then opens the AssemblyAI WebSocket with that temporary token.
+### Security model
+
+The browser does not receive the permanent `ASSEMBLYAI_API_KEY`. Instead, it requests a short-lived token from the server-side `/api/voice-agent-token` function. The temporary token is then used to establish the voice-agent WebSocket session.
+
+This separation keeps the long-lived credential in the Vercel environment and limits the value of any browser-visible session token.
 
 ## Technology stack
 
-- React 19 and TypeScript
-- Vite and Tailwind CSS
-- AssemblyAI Voice Agent API
-- WebSocket and Web Audio API
-- Express/tRPC development server fallback
-- Vercel Serverless Functions
-- Vitest
-- GitHub Actions-ready project structure
+| Layer | Technology |
+| --- | --- |
+| User interface | React 19, TypeScript, Vite, Tailwind CSS |
+| Voice agent | AssemblyAI Voice Agent API over WebSocket |
+| Audio input | Browser `getUserMedia`, PCM16 audio frames, 24 kHz mono |
+| Audio output | Web Audio API with scheduled PCM playback |
+| Backend token route | Vercel Serverless Function |
+| Development backend | Express and tRPC |
+| Testing | Vitest |
+| Deployment | Vercel connected to GitHub |
 
-## Local development
+## Live demo
+
+Open the production application at **[techses-voice-agent.vercel.app](https://techses-voice-agent.vercel.app)**.
+
+Try this example in Azerbaijani or English:
+
+> “Wi-Fi qoşulub, amma internet işləmir.”
+
+Then review the transcript, follow the suggested troubleshooting step, and select **Create ticket summary** when escalation is needed.
+
+## Repository structure
+
+```text
+techses-voice-agent/
+├── api/
+│   └── voice-agent-token.ts       # Vercel token endpoint
+├── client/
+│   └── src/
+│       ├── lib/issueData.ts       # Issue types and guided responses
+│       └── pages/Home.tsx          # Main support console
+├── docs/
+│   ├── techses-dashboard.png      # Product screenshot
+│   ├── techses-pitch.md           # Hackathon pitch source
+│   └── techses-pitch.pdf          # Hackathon pitch deck
+├── server/
+│   ├── routers.ts                 # tRPC procedures
+│   └── _core/                     # Server and runtime infrastructure
+├── SPEC.md                        # MVP product specification
+├── vercel.json                    # Vercel build configuration
+└── README.md
+```
+
+## Run locally
 
 ### Prerequisites
 
@@ -64,7 +120,7 @@ The browser never receives the permanent `ASSEMBLYAI_API_KEY`. It requests a one
 - pnpm 10 or newer
 - An AssemblyAI API key
 
-### Installation
+### Install
 
 ```bash
 git clone https://github.com/etikhacker/techses-voice-agent.git
@@ -72,23 +128,27 @@ cd techses-voice-agent
 pnpm install
 ```
 
-Create a local environment file for the server-side token route:
+### Configure the API key
 
-```bash
+Create a local environment configuration for the server-side token route:
+
+```env
 ASSEMBLYAI_API_KEY=your_assemblyai_api_key
 ```
 
-Never commit `.env` files or permanent API keys. The repository already ignores environment files.
+Do not commit `.env` files or permanent API keys. The API key must remain server-side.
 
-### Run the project
+### Start development
 
 ```bash
 pnpm dev
 ```
 
-The WebDev development server uses the tRPC token procedure as a fallback. In Vercel, the browser uses the serverless route at `/api/voice-agent-token`.
+The local development server exposes the tRPC token procedure as a fallback. On Vercel, the client uses `/api/voice-agent-token`.
 
-### Verify the project
+## Validation
+
+Run the project checks before opening a pull request or deploying a change:
 
 ```bash
 pnpm test
@@ -96,46 +156,41 @@ pnpm check
 pnpm build
 ```
 
-The test suite validates AssemblyAI credentials, temporary token generation, the Vercel token route, and the auth logout contract.
+The test suite covers the authentication contract, AssemblyAI credential handling, temporary-token generation, and the Vercel token route.
 
 ## Deployment
 
 The GitHub repository is connected to the Vercel project. Pushes to `main` trigger a production deployment.
 
-Configure this secret in the **Production** and **Preview** environments:
+Configure `ASSEMBLYAI_API_KEY` in the **Preview** and **Production** environments. The `vercel.json` file configures the Vite output directory and keeps the token endpoint available as a serverless function.
 
-| Variable | Purpose |
-| --- | --- |
-| `ASSEMBLYAI_API_KEY` | Server-side authentication for temporary Voice Agent tokens |
+## Current limitations
 
-The Vercel build uses `vercel.json` to serve `dist/public` as the frontend while keeping `api/voice-agent-token.ts` as a serverless function.
-
-## Demo flow
-
-1. Open the live demo.
-2. Select **Start voice session**.
-3. Allow microphone access.
-4. Speak in Azerbaijani or English, for example: “Wi-Fi qoşulub, amma internet işləmir.”
-5. Review the live transcript and agent response.
-6. Use **Create ticket summary** when escalation is appropriate.
-7. If microphone access is unavailable, use the issue shortcuts to demonstrate the support and ticket flow.
-
-## Security notes
-
-The permanent AssemblyAI key is stored only as a server-side environment variable. The browser receives a short-lived, one-time token and uses it only to open a single Voice Agent session. The token route does not return or log the permanent key.
-
-The current MVP does not persist ticket data to a production database. Ticket creation is intentionally presented as a polished demo workflow and is ready for the next database-backed iteration.
+The current MVP is intentionally focused. It does not yet persist user accounts, ticket history, or organization-level help-desk data. The issue flows are curated for the initial demo rather than generated from a large enterprise knowledge base. Browser microphone permissions and network availability can also affect live-session behavior.
 
 ## Roadmap
 
-- Persist tickets and transcript summaries in the project database.
-- Add AssemblyAI tool calling for automated ticket creation and status updates.
-- Add an operator ticket history view with search and priority filters.
-- Add authentication and role-based operator workspaces.
-- Add issue-specific knowledge-base retrieval for more precise troubleshooting.
+1. Add multilingual issue classification and response preferences.
+2. Add a searchable IT knowledge base with source-aware troubleshooting steps.
+3. Persist ticket history for authenticated users.
+4. Add integrations for common help-desk systems.
+5. Add analytics for resolution time, escalation rate, and recurring issue categories.
+6. Improve interruption handling and turn-taking for longer conversations.
+
+## Hackathon submission links
+
+- **Live demo:** [techses-voice-agent.vercel.app](https://techses-voice-agent.vercel.app)
+- **GitHub repository:** [github.com/etikhacker/techses-voice-agent](https://github.com/etikhacker/techses-voice-agent)
+- **Hackathon team:** [Omar Solo Voice AI on LabLab](https://lablab.ai/ai-hackathons/assemblyai-voice-agent-hackathon/omar-solo-voice-ai)
+
+## License
+
+This project is provided for hackathon and educational use. Add a formal open-source license before distributing it as a reusable library or commercial product.
 
 ## References
 
-[1]: https://www.assemblyai.com/docs/voice-agents/voice-agent-api "AssemblyAI Voice Agent API documentation"
-[2]: https://www.assemblyai.com/docs/voice-agents/voice-agent-api/api-spec/voice-agent-websocket "AssemblyAI Voice Agent WebSocket API"
+[1]: https://www.assemblyai.com/docs/voice-agents "AssemblyAI Voice Agents documentation"
+[2]: https://www.assemblyai.com/docs/api-reference/voice-agent-api/generate-voice-agent-token "AssemblyAI Voice Agent token API"
 [3]: https://vercel.com/docs/functions "Vercel Functions documentation"
+[4]: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API "MDN Web Audio API documentation"
+[5]: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia "MDN getUserMedia documentation"
